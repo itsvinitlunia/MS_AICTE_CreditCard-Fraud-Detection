@@ -181,21 +181,75 @@ def show_fraud_detection_page():
     # Input form
     st.subheader("Enter Transaction Details")
     
+    # Add sample data option
+    use_sample_data = st.checkbox("Use Sample Data for Testing", value=True, 
+                                 help="Check this to use pre-defined sample data for testing")
+    
     left_column, right_column = st.columns(2)
     
     with left_column:
-        transaction_amount = st.number_input("Transaction Amount", min_value=0.0, value=100.0)
-        transaction_time = st.number_input("Transaction Time", min_value=0, value=1000)
+        transaction_amount = st.number_input("Transaction Amount ($)", min_value=0.0, value=100.0, 
+                                          help="Enter the transaction amount in dollars")
+        transaction_time = st.number_input("Transaction Time (seconds)", min_value=0, value=1000,
+                                        help="Time elapsed between this transaction and the first transaction")
     
     with right_column:
         # More features for better prediction
-        feature_v1 = st.number_input("Feature V1", value=0.0, help="Feature 1")
-        feature_v2 = st.number_input("Feature V2", value=0.0, help="Feature 2")
-        feature_v3 = st.number_input("Feature V3", value=0.0, help="Feature 3")
+        feature_v1 = st.number_input("Feature V1", value=0.0, help="PCA transformed feature V1")
+        feature_v2 = st.number_input("Feature V2", value=0.0, help="PCA transformed feature V2")
+        feature_v3 = st.number_input("Feature V3", value=0.0, help="PCA transformed feature V3")
+    
+    # Add more feature inputs in a scrollable area
+    st.subheader("Additional Features (V4-V28)")
+    
+    # Create columns for better layout
+    col1, col2, col3, col4 = st.columns(4)
+    
+    features_v4_v28 = []
+    with col1:
+        for i in range(4, 8):
+            features_v4_v28.append(st.number_input(f"V{i}", value=0.0, key=f"v{i}"))
+    with col2:
+        for i in range(8, 12):
+            features_v4_v28.append(st.number_input(f"V{i}", value=0.0, key=f"v{i}"))
+    with col3:
+        for i in range(12, 16):
+            features_v4_v28.append(st.number_input(f"V{i}", value=0.0, key=f"v{i}"))
+    with col4:
+        for i in range(16, 20):
+            features_v4_v28.append(st.number_input(f"V{i}", value=0.0, key=f"v{i}"))
+    
+    # Add remaining features
+    col5, col6, col7 = st.columns(3)
+    with col5:
+        for i in range(20, 24):
+            features_v4_v28.append(st.number_input(f"V{i}", value=0.0, key=f"v{i}"))
+    with col6:
+        for i in range(24, 28):
+            features_v4_v28.append(st.number_input(f"V{i}", value=0.0, key=f"v{i}"))
+    with col7:
+        features_v4_v28.append(st.number_input("V28", value=0.0, key="v28"))
     
     if st.button("Run Prediction", type="primary"):
-        # Prepare input for model
-        input_features = [transaction_time, transaction_amount, feature_v1, feature_v2, feature_v3] + [0.0] * 24
+        # Use sample data if selected
+        if use_sample_data:
+            # Sample data for testing (normal transaction)
+            sample_features = [
+                1000,  # Time
+                -0.1, 0.2, -0.3, 0.1, -0.2, 0.3, -0.1, 0.2,  # V1-V8
+                -0.3, 0.1, -0.2, 0.3, -0.1, 0.2, -0.3, 0.1,  # V9-V16
+                -0.2, 0.3, -0.1, 0.2, -0.3, 0.1, -0.2, 0.3,  # V17-V24
+                -0.1, 0.2, -0.3, 0.1, -0.2,  # V25-V28
+                100.0  # Amount
+            ]
+            input_features = sample_features
+            st.info("Using sample data for testing. This represents a normal transaction.")
+        else:
+            # Prepare input for model - all 30 features in correct order
+            input_features = [transaction_time, feature_v1, feature_v2, feature_v3] + features_v4_v28 + [transaction_amount]
+        
+        # Debug: Print feature count
+        st.write(f"Number of features: {len(input_features)}")
         
         # Scale input
         input_scaled = scaler.transform([input_features])

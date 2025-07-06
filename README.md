@@ -59,6 +59,13 @@ This project implements a robust credit card fraud detection system using multip
 - **Pandas & NumPy**: Data manipulation and analysis
 - **Streamlit**: Web application framework
 
+### Dataset Structure
+The credit card dataset contains 30 features:
+- **Time**: Time elapsed between transactions
+- **V1-V28**: PCA-transformed features (anonymized for privacy)
+- **Amount**: Transaction amount in dollars
+- **Class**: Target variable (0=Normal, 1=Fraud)
+
 ### Key Libraries
 ```
 scikit-learn>=1.0.0
@@ -153,10 +160,15 @@ Credit Card Fraud Detection/
 
 Once the Streamlit app is running:
 1. Open your browser to `http://localhost:8501`
-2. Upload transaction data or use sample data
-3. Select your preferred model
-4. View real-time fraud predictions
-5. Analyze model performance metrics
+2. Navigate to the "Fraud Detection" page
+3. Choose between manual input or sample data testing
+4. If using manual input, provide all 30 features:
+   - **Time**: Transaction time in seconds
+   - **Amount**: Transaction amount in dollars
+   - **V1-V28**: PCA-transformed features (can be set to 0.0 for testing)
+5. Select your preferred model
+6. View real-time fraud predictions with confidence scores
+7. Analyze model performance metrics
 
 ### Programmatic Usage
 
@@ -249,9 +261,25 @@ The web application provides interactive visualizations for:
 }
 ```
 
-## 🤝 Contributing
+## 🔧 Troubleshooting
 
-We welcome contributions! Please follow these steps:
+### Common Issues
+
+#### Feature Count Mismatch Error
+If you encounter: `ValueError: X has 29 features, but StandardScaler is expecting 30 features`
+- **Solution**: Ensure you provide all 30 features in the correct order
+- **Order**: [Time, V1, V2, V3, ..., V28, Amount]
+- **Use Sample Data**: Check "Use Sample Data for Testing" in the web interface
+
+#### Model Loading Issues
+- Ensure all model files are present in the `models/` directory
+- Run `python src/model_training.py` to regenerate models if needed
+
+#### Web App Issues
+- Check that Streamlit is installed: `pip install streamlit`
+- Ensure all dependencies are installed: `pip install -r requirements.txt`
+
+## 🤝 Contributing
 
 1. **Fork the repository**
 2. **Create a feature branch**
