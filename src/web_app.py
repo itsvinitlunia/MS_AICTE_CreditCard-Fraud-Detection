@@ -160,44 +160,57 @@ def show_data_analysis_page():
         st.error(f"Error loading data: {e}")
 
 def show_fraud_detection_page():
-    """Fraud detection page"""
-    st.header("Fraud Detection")
+    """Main fraud detection interface - where users can test transactions"""
+    st.header("🔍 Fraud Detection System")
     
-    models, scaler = load_trained_models_and_scaler()
+    # Load our trained models and data scaler
+    trained_models, data_scaler = load_trained_models_and_scaler()
     
-    if models is None:
+    if trained_models is None:
+        st.error("❌ Could not load the trained models. Please run model training first.")
         return
     
-    # Model selection
-    st.subheader("Choose a Model")
-    selected_model_name = st.selectbox(
-        "Select Model:",
-        ["Random Forest", "Neural Network", "SVM", "Logistic Regression"],
-        help="Different models have different strengths"
+    # Let user pick which model to use for prediction
+    st.subheader("🤖 Choose Your Detection Model")
+    available_models = ["Random Forest", "Neural Network", "SVM", "Logistic Regression"]
+    chosen_model_name = st.selectbox(
+        "Select a model for fraud detection:",
+        available_models,
+        help="Each model has different strengths - Random Forest is usually most reliable"
     )
     
-    st.info(f"Selected Model: **{selected_model_name}**")
+    st.success(f"✅ Selected Model: **{chosen_model_name}**")
     
-    # Input form
-    st.subheader("Enter Transaction Details")
+    # Transaction input section
+    st.subheader("💳 Enter Transaction Details")
     
-    # Add sample data option
-    use_sample_data = st.checkbox("Use Sample Data for Testing", value=True, 
-                                 help="Check this to use pre-defined sample data for testing")
+    # Quick testing option for users
+    use_test_data = st.checkbox("Use Sample Data for Quick Testing", value=True, 
+                               help="Check this to test with pre-made sample data (recommended for first-time users)")
     
-    left_column, right_column = st.columns(2)
+    # Create two columns for better layout
+    left_col, right_col = st.columns(2)
     
-    with left_column:
-        transaction_amount = st.number_input("Transaction Amount ($)", min_value=0.0, value=100.0, 
-                                          help="Enter the transaction amount in dollars")
-        transaction_time = st.number_input("Transaction Time (seconds)", min_value=0, value=1000,
-                                        help="Time elapsed between this transaction and the first transaction")
+    with left_col:
+        # Basic transaction info
+        transaction_amount_dollars = st.number_input(
+            "Transaction Amount ($)", 
+            min_value=0.0, 
+            value=100.0, 
+            help="How much money is involved in this transaction?"
+        )
+        transaction_time_seconds = st.number_input(
+            "Transaction Time (seconds)", 
+            min_value=0, 
+            value=1000,
+            help="Time since the very first transaction in the dataset"
+        )
     
-    with right_column:
-        # More features for better prediction
-        feature_v1 = st.number_input("Feature V1", value=0.0, help="PCA transformed feature V1")
-        feature_v2 = st.number_input("Feature V2", value=0.0, help="PCA transformed feature V2")
-        feature_v3 = st.number_input("Feature V3", value=0.0, help="PCA transformed feature V3")
+    with right_col:
+        # First few PCA features (these are the most important ones)
+        pca_feature_1 = st.number_input("PCA Feature V1", value=0.0, help="First principal component feature")
+        pca_feature_2 = st.number_input("PCA Feature V2", value=0.0, help="Second principal component feature")
+        pca_feature_3 = st.number_input("PCA Feature V3", value=0.0, help="Third principal component feature")
     
     # Add more feature inputs in a scrollable area
     st.subheader("Additional Features (V4-V28)")
@@ -230,171 +243,207 @@ def show_fraud_detection_page():
     with col7:
         features_v4_v28.append(st.number_input("V28", value=0.0, key="v28"))
     
-    if st.button("Run Prediction", type="primary"):
-        # Use sample data if selected
-        if use_sample_data:
-            # Sample data for testing (normal transaction)
-            sample_features = [
+    if st.button("🚀 Run Fraud Detection", type="primary", help="Click to analyze this transaction"):
+        # Handle sample data vs manual input
+        if use_test_data:
+            # Pre-made sample data for easy testing (represents a normal transaction)
+            sample_transaction_data = [
                 1000,  # Time
                 -0.1, 0.2, -0.3, 0.1, -0.2, 0.3, -0.1, 0.2,  # V1-V8
                 -0.3, 0.1, -0.2, 0.3, -0.1, 0.2, -0.3, 0.1,  # V9-V16
                 -0.2, 0.3, -0.1, 0.2, -0.3, 0.1, -0.2, 0.3,  # V17-V24
-                -0.1, 0.2, -0.3, 0.1, -0.2,  # V25-V28
+                -0.1, 0.2, -0.3, 0.1,                        # V25-V28
                 100.0  # Amount
             ]
-            input_features = sample_features
-            st.info("Using sample data for testing. This represents a normal transaction.")
+            transaction_features = sample_transaction_data
+            st.info("🧪 Using sample data for testing. This represents a normal transaction.")
         else:
-            # Prepare input for model - all 30 features in correct order
-            input_features = [transaction_time, feature_v1, feature_v2, feature_v3] + features_v4_v28 + [transaction_amount]
+            # Build feature array from user inputs
+            transaction_features = [
+                transaction_time_seconds, 
+                pca_feature_1, pca_feature_2, pca_feature_3
+            ] + features_v4_v28 + [transaction_amount_dollars]
         
-        # Debug: Print feature count
-        st.write(f"Number of features: {len(input_features)}")
+        # Safety check - make sure we have the right number of features
+        expected_feature_count = 30
+        actual_feature_count = len(transaction_features)
+        if actual_feature_count != expected_feature_count:
+            st.error(f"❌ Feature count error! Expected {expected_feature_count}, got {actual_feature_count}")
+            st.write("🔍 Debug - Features:", transaction_features)
+            return
         
-        # Scale input
-        input_scaled = scaler.transform([input_features])
+        # Show progress and feature count
+        st.write(f"📊 Processing {len(transaction_features)} features...")
         
-        # Get model
-        selected_model = models[selected_model_name]
+        # Scale the features to match our training data
+        scaled_features = data_scaler.transform([transaction_features])
         
-        # Make prediction
-        prediction = selected_model.predict(input_scaled)[0]
-        probability = selected_model.predict_proba(input_scaled)[0]
+        # Get the chosen model and make our prediction
+        chosen_model = trained_models[chosen_model_name]
         
-        # Show results
+        # Run the fraud detection analysis
+        fraud_prediction = chosen_model.predict(scaled_features)[0]
+        prediction_probabilities = chosen_model.predict_proba(scaled_features)[0]
+        
+        # Display the results with nice formatting
         st.markdown("---")
-        st.subheader("Prediction Results")
+        st.subheader("🎯 Fraud Detection Results")
         
-        left_column, right_column = st.columns(2)
+        # Create two columns for the main result
+        result_left_col, result_right_col = st.columns(2)
         
-        with left_column:
-            if prediction == 0:
-                st.success("**NORMAL TRANSACTION**")
+        with result_left_col:
+            if fraud_prediction == 0:
+                st.success("✅ **SAFE TRANSACTION**")
                 st.balloons()
+                st.write("🎉 This transaction appears to be legitimate!")
             else:
-                st.error("**FRAUD DETECTED**")
+                st.error("🚨 **FRAUD DETECTED**")
                 st.snow()
+                st.write("⚠️ This transaction shows suspicious patterns!")
         
-        with right_column:
-            st.metric("Confidence", f"{max(probability):.1%}")
+        with result_right_col:
+            confidence_level = max(prediction_probabilities)
+            st.metric("🎯 Model Confidence", f"{confidence_level:.1%}")
         
-        # Confidence gauge
-        confidence = max(probability)
-        st.progress(confidence)
-        st.write(f"Model Confidence: {confidence:.1%}")
+        # Show a progress bar for confidence
+        st.progress(confidence_level)
+        st.write(f"📊 Model Confidence Level: {confidence_level:.1%}")
         
-        # Show probabilities
-        left_column, right_column = st.columns(2)
+        # Detailed probability breakdown
+        st.subheader("📈 Detailed Analysis")
+        prob_left_col, prob_right_col = st.columns(2)
         
-        with left_column:
-            st.metric("Normal Probability", f"{probability[0]:.1%}")
+        with prob_left_col:
+            normal_prob = prediction_probabilities[0]
+            st.metric("✅ Normal Transaction Probability", f"{normal_prob:.1%}")
         
-        with right_column:
-            st.metric("Fraud Probability", f"{probability[1]:.1%}")
+        with prob_right_col:
+            fraud_prob = prediction_probabilities[1]
+            st.metric("🚨 Fraud Probability", f"{fraud_prob:.1%}")
         
-        # Model info
-        st.info(f"**Model Used:** {selected_model_name}")
-        st.info(f"**Prediction:** {'Fraud' if prediction == 1 else 'Normal'}")
-        st.info(f"**Confidence:** {confidence:.1%}")
+        # Summary information
+        st.subheader("📋 Analysis Summary")
+        st.info(f"🤖 **Model Used:** {chosen_model_name}")
+        st.info(f"🔍 **Prediction:** {'🚨 FRAUD' if fraud_prediction == 1 else '✅ NORMAL'}")
+        st.info(f"📊 **Confidence:** {confidence_level:.1%}")
+        
+        # Add some helpful context
+        if fraud_prediction == 1:
+            st.warning("💡 **Recommendation:** Review this transaction carefully and consider additional verification.")
+        else:
+            st.success("💡 **Recommendation:** This transaction appears safe based on our analysis.")
 
 def show_performance_page():
-    """Model performance page"""
-    st.header("Model Performance Analysis")
+    """Display detailed performance analysis of all our trained models"""
+    st.header("📊 Model Performance Analysis")
     
     try:
-        # Load model results
-        results_df = pd.read_csv('models/model_results.csv')
+        # Load our saved model performance data
+        model_performance_data = pd.read_csv('models/model_results.csv')
         
-        st.subheader("Model Performance Comparison")
+        st.subheader("🏆 Model Performance Comparison")
         
-        # Create performance chart
-        fig = go.Figure()
+        # Create a beautiful performance visualization
+        performance_chart = go.Figure()
         
-        metrics = ['accuracy', 'precision', 'recall', 'f1']
-        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
+        # Define our performance metrics and colors
+        performance_metrics = ['accuracy', 'precision', 'recall', 'f1']
+        chart_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
         
-        for i, metric in enumerate(metrics):
-            fig.add_trace(go.Bar(
-                name=metric.capitalize(),
-                x=results_df.index,
-                y=results_df[metric],
-                marker_color=colors[i]
+        # Add each metric as a bar in our chart
+        for metric_index, metric_name in enumerate(performance_metrics):
+            performance_chart.add_trace(go.Bar(
+                name=metric_name.capitalize(),
+                x=model_performance_data.index,
+                y=model_performance_data[metric_name],
+                marker_color=chart_colors[metric_index]
             ))
         
-        fig.update_layout(
-            title="Model Performance Metrics",
-            xaxis_title="Models",
-            yaxis_title="Score",
+        # Make the chart look professional
+        performance_chart.update_layout(
+            title="📈 Model Performance Metrics Comparison",
+            xaxis_title="🤖 Machine Learning Models",
+            yaxis_title="📊 Performance Score",
             barmode='group'
         )
         
-        st.plotly_chart(fig)
+        st.plotly_chart(performance_chart)
         
-        # Show detailed results
-        st.subheader("Detailed Results")
-        st.dataframe(results_df)
+        # Show the detailed performance table
+        st.subheader("📋 Detailed Performance Results")
+        st.dataframe(model_performance_data)
         
-        # Best model info
-        best_model_name = results_df['accuracy'].idxmax()
-        best_accuracy = results_df.loc[best_model_name, 'accuracy']
+        # Highlight the best performing model
+        best_model_name = model_performance_data['accuracy'].idxmax()
+        best_model_accuracy = model_performance_data.loc[best_model_name, 'accuracy']
         
-        st.success(f"**Best Model:** {best_model_name}")
-        st.success(f"**Best Accuracy:** {best_accuracy:.1%}")
+        st.success(f"🏆 **Best Overall Model:** {best_model_name}")
+        st.success(f"🎯 **Best Accuracy:** {best_model_accuracy:.1%}")
         
-    except Exception as e:
-        st.error(f"Error loading results: {e}")
+        # Add some insights
+        st.info("💡 **Insight:** The Random Forest model typically performs best for fraud detection due to its ability to handle complex patterns in transaction data.")
+        
+    except Exception as error:
+        st.error(f"❌ Error loading performance data: {error}")
+        st.info("💡 Make sure you've run the model training script first!")
 
 def show_comparison_page():
-    """Model comparison page"""
-    st.header("Model Comparison")
+    """Side-by-side comparison of all our fraud detection models"""
+    st.header("🔍 Model Comparison Dashboard")
     
     try:
-        # Load model results
-        results_df = pd.read_csv('models/model_results.csv')
+        # Load our model comparison data
+        comparison_data = pd.read_csv('models/model_results.csv')
         
-        left_column, right_column = st.columns(2)
+        # Create two columns for our comparison charts
+        comparison_left_col, comparison_right_col = st.columns(2)
         
-        with left_column:
-            st.subheader("Accuracy Comparison")
-            fig = px.bar(
-                x=results_df.index,
-                y=results_df['accuracy'],
-                title="Model Accuracy",
-                labels={'x': 'Models', 'y': 'Accuracy'}
+        with comparison_left_col:
+            st.subheader("🎯 Accuracy Comparison")
+            accuracy_chart = px.bar(
+                x=comparison_data.index,
+                y=comparison_data['accuracy'],
+                title="📊 Model Accuracy Scores",
+                labels={'x': '🤖 Models', 'y': '📈 Accuracy'}
             )
-            st.plotly_chart(fig)
+            st.plotly_chart(accuracy_chart)
         
-        with right_column:
-            st.subheader("F1 Score Comparison")
-            fig = px.bar(
-                x=results_df.index,
-                y=results_df['f1'],
-                title="Model F1 Score",
-                labels={'x': 'Models', 'y': 'F1 Score'}
+        with comparison_right_col:
+            st.subheader("⚖️ F1 Score Comparison")
+            f1_chart = px.bar(
+                x=comparison_data.index,
+                y=comparison_data['f1'],
+                title="📊 Model F1 Scores",
+                labels={'x': '🤖 Models', 'y': '📈 F1 Score'}
             )
-            st.plotly_chart(fig)
+            st.plotly_chart(f1_chart)
         
-        # Model comparison table
-        st.subheader("Detailed Comparison")
+        # Show detailed comparison table
+        st.subheader("📋 Detailed Model Comparison")
         
-        # Format the results for display
-        display_df = results_df.copy()
-        for col in display_df.columns:
-            display_df[col] = display_df[col].apply(lambda x: f"{x:.3f}")
+        # Format our data for better display
+        formatted_comparison_data = comparison_data.copy()
+        for column in formatted_comparison_data.columns:
+            formatted_comparison_data[column] = formatted_comparison_data[column].apply(lambda x: f"{x:.3f}")
         
-        st.dataframe(display_df)
+        st.dataframe(formatted_comparison_data)
         
-        # Model recommendations
-        st.subheader("Model Recommendations")
+        # Provide model recommendations
+        st.subheader("💡 Model Recommendations")
         
-        best_accuracy_model = results_df['accuracy'].idxmax()
-        best_f1_model = results_df['f1'].idxmax()
+        best_accuracy_model = comparison_data['accuracy'].idxmax()
+        best_f1_model = comparison_data['f1'].idxmax()
         
-        st.info(f"**Best for Accuracy:** {best_accuracy_model}")
-        st.info(f"**Best for F1 Score:** {best_f1_model}")
+        st.info(f"🏆 **Best for Overall Accuracy:** {best_accuracy_model}")
+        st.info(f"⚖️ **Best for Balanced Performance (F1):** {best_f1_model}")
         
-    except Exception as e:
-        st.error(f"Error loading comparison data: {e}")
+        # Add helpful insights
+        st.success("💡 **Pro Tip:** Choose Random Forest for general use, Neural Network for complex patterns, and SVM for high precision scenarios.")
+        
+    except Exception as error:
+        st.error(f"❌ Error loading comparison data: {error}")
+        st.info("💡 Please run the model training script to generate comparison data.")
 
 if __name__ == "__main__":
     main() 

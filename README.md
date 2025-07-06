@@ -103,7 +103,17 @@ Credit Card Fraud Detection/
 │   └── web_app.py                # Streamlit web application
 ├── 📄 main.py                     # Main execution script
 ├── 📋 requirements.txt            # Python dependencies
-└── 📖 README.md                   # Project documentation
+├── 📖 README.md                   # Project documentation
+├── 📊 Output/                     # Web app screenshots and outputs
+│   ├── Home Page.png             # Main dashboard screenshot
+│   ├── Home page 2.png           # Additional home page view
+│   ├── Data Analysis.png         # Data analysis interface
+│   ├── Model Performance.png     # Model performance dashboard
+│   ├── Model Comparison.png      # Model comparison view
+│   └── Fraud Detection System.png # Fraud detection interface
+├── 📈 model_comparison.png       # Model comparison visualization
+├── 📊 Figure_1.png              # Data visualization plots
+└── 📊 data_plots.png            # Data exploration plots
 ```
 
 ## 🚀 Installation
@@ -224,6 +234,22 @@ The web application provides interactive visualizations for:
 - Confusion matrices
 - Feature importance analysis
 - Prediction probability distributions
+
+### 📸 Visual Outputs
+
+The project includes comprehensive visual documentation:
+
+#### Web Application Screenshots (`Output/` folder)
+- **Home Page**: Main dashboard with navigation and overview
+- **Data Analysis**: Interactive data exploration interface
+- **Model Performance**: Detailed performance metrics and charts
+- **Model Comparison**: Side-by-side model comparison
+- **Fraud Detection**: Real-time prediction interface
+
+#### Generated Visualizations
+- **Model Comparison**: Performance comparison across all models
+- **Data Plots**: Transaction distribution and fraud analysis
+- **Figure_1**: Additional data exploration visualizations
 
 ## 🔌 API Documentation
 
